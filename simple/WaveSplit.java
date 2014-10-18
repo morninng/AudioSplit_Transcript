@@ -18,7 +18,7 @@ public class WaveSplit{
 
 //wav edit campus にmain ありmouselistenerを実行し、Event駆動型へ変更
  
-    public void WaveSplit(URI file_path){
+    public WaveSplit(URI file_path){
     	path = file_path;
     	wavfile = new WavFile();
     	wavfile.readFile(new File(file_path));
@@ -31,15 +31,13 @@ public class WaveSplit{
 	//SegmentListのSplitは、WavControlのSplitから、wavfile.list.split()
 	//で呼び出す。WavControlのSplitの中に閾値などが設定されている。
 	
-	//Split関数は、どこからも呼ばれていないので、呼び出し方法は考える必要がアル。
 	//閾値（threshould）は、関数呼び出し時につかえるのでちょうどがよい。
-	
-
     
     //WavControl.javaから呼ばれる　-> SegmentList.javaの中のSplitを呼び出す処理
-    public void split(int threshold, int interval, int duration)
+
+    public void split(int threshold, int interval, int min_duration, int max_duration, long frame_len)
     {
-    	wavfile.list.split(threshold, interval, duration);
+    	wavfile.list.split_all(threshold, interval, min_duration, max_duration, frame_len);
     }
 
 

@@ -40,9 +40,12 @@ public class SegmentList extends ArrayList<Segment>
     boolean debug=false;
     int selected=-1;
     long nBytesRead;
-
+    long start_length[] ={0,0};
+    
+    
     SegmentList(byte[] buf, long nBytesRead)
     {
+    	
 	this.buf=buf;
 	this.nBytesRead=nBytesRead;
 	if(debug)
@@ -117,25 +120,121 @@ public class SegmentList extends ArrayList<Segment>
     {
 	return buf;
     }
-    
-    public void split(int threshold, int interval, int duration)
-    {	
+
+public void split_all(int threshold, int interval, int min_duration, int max_duration,  long num_all_frame )
+{
 	int k=0;
-	int start=0,end=0;
+	long end=0;
+	long start=0;
 	clear();
+	int ret=1;
+	int min_interval;
+	long[] start_length = {0,0};
+	int length;
+	
+	while(ret!=0){
+		min_interval = interval;
+		length =max_duration +1;
+		while(length > max_duration){
+			ret = split_unit(threshold,start, min_interval, min_duration, num_all_frame, start_length);
+			length = (int)start_length[1];
+			start = start_length[0];
+			min_interval = min_interval *3/4;
+		}
+		end = start + (long)length;
+		add(new Segment(start, end));
+		System.out.println("start = " + start + "  end = " + end + "  length = " + length + "  min_interval = " + min_interval);
+		start = start + length;
+    }
+	System.out.println("split finish");
+}
+
+// return 1: スキャンを継続
+// return 0: スキャンを終了
+
+    public int split_unit(int threshold, long start_frame, int min_interval, int min_duration, long num_all_frame, long[] start_length)
+    {
+    	int k = (int)start_frame;
+    	long tmp_big_start = start_frame;
+    	long tmp_big_end  = start_frame;
+    	long big_start = start_frame;
+    	long small_start = start_frame;
+    	long length;
+    	long current_interval;
+    	long current_duration;
+    	
+    	do{
+    		while((k<num_all_frame) && (( 128 - Math.abs(buf[k]) ) < threshold)  ){
+    			int check = 128 - Math.abs(buf[k]);
+    			k++;
+
+    		}
+    		
+			if(big_start == start_frame){
+				big_start = k;
+			}
+			tmp_big_start = k;
+			
+			current_interval = k -small_start;
+			if(min_interval  <  current_interval){
+				
+				current_duration = tmp_big_end - big_start;
+				if(current_duration > min_duration){
+					start_length[0] = big_start;
+					start_length[1] = tmp_big_end - big_start;
+					return 1; //scan continue
+				}else{
+					big_start = k;
+				}
+			}
+			if(k >= num_all_frame){
+		    	start_length[0] = big_start;
+		    	if(tmp_big_end - big_start > min_duration)
+		    		start_length[1] = tmp_big_end - big_start;
+		    	else{
+		    		start_length[1] = 0;
+		    	}
+		    	return 0; //scan finish
+			} 
+
+			
+    		while( (k<num_all_frame) &&  (( 128 - Math.abs(buf[k])) >= threshold )   ){
+    			int check = 128 - Math.abs(buf[k]);
+    			k++;
+    		}
+    		small_start = k;
+    		tmp_big_end = k;
+    		if((k - big_start)<min_duration){
+    			// do nothing and ignore
+    		}
+    	}while( (k<= num_all_frame));
+
+    	length = k - big_start;
+    	start_length[0] = big_start;
+    	start_length[1] = length;
+    	
+    	return 0; //scan finish
+    }
+
+	/*
 	do
 	    {
+		
 		while(Math.abs(buf[k])<threshold && ++k<nBytesRead);
 		if(k<nBytesRead)
 		    {
 			start=k;
 			end=k;
-			while((Math.abs(buf[k])>threshold || k-end<duration) && ++k<nBytesRead)
-			    {
-				if(Math.abs(buf[k])>threshold)
-				    end=k;
-			    }
-			if(end-start>interval && (k-end>=duration || k>=nBytesRead))
+			while((Math.abs(buf[k])>threshold || (k - end)<duration) && ++k<nBytesRead)
+			{
+				byte tmp = buf[k];
+				int tmp_int = (int)buf[k];
+				if(Math.abs(buf[k])>threshold){
+				    end = k;
+				}
+			}
+
+			if(end-start>interval && ( (k - end) >= duration || k>=nBytesRead))
 			    {
 				if(debug)
 				    System.out.println("Segment: "+start+", "+end);
@@ -144,7 +243,9 @@ public class SegmentList extends ArrayList<Segment>
 		    }
 	    }
 	while(++k<nBytesRead);	    
-    }
+    */
+
+
 
     public int getIndex(long x)
     {
